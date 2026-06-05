@@ -1,6 +1,6 @@
 """Helpers for the parallel Data Curator download: thread sizing and resume-skip.
 
-The KN Hack investable universe is ~3,660 tickers pulled from FMP (Starter ≈ 300
+The KN Hack investable universe is 2,687 tickers pulled from FMP (Starter ≈ 300
 calls/min on a single key). Each ticker triggers several endpoint calls, so an
 unbounded thread pool bursts past the rate limit and earns 429s. These pure helpers
 keep the entry script thin and testable: :func:`resolve_max_threads` chooses a
@@ -22,9 +22,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-# Conservative default kept well under the FMP Starter limit (~300 calls/min). Override
-# with the KNDC_MAX_THREADS environment variable once observed 429 rates allow it.
-DEFAULT_MAX_THREADS = 8
+# Conservative default kept well under the FMP Starter limit (~300 calls/min). Eight
+# threads were observed to trigger a storm of HTTP 429s on a single key, so the default
+# stays low; raise it via KNDC_MAX_THREADS once observed 429 rates allow it.
+DEFAULT_MAX_THREADS = 3
+
+# Per-identifier retry budget and backoff for transient HTTP 429 (rate-limit) responses.
+RATE_LIMIT_MAX_RETRIES = 4
+_BACKOFF_BASE_SECONDS = 5.0
 
 
 def resolve_max_threads(num_identifiers: int, env_value: str | None) -> int:
@@ -86,3 +91,53 @@ def pending_identifiers(
     return tuple(
         identifier for identifier in identifiers if not (base / f"{identifier}.parquet").is_file()
     )
+
+
+def is_rate_limit_error(error: BaseException) -> bool:
+    """Return ``True`` when an exception looks like an HTTP 429 / rate-limit response.
+
+    The Data Curator surfaces FMP throttling as a provider error whose message carries
+    the HTTP status; matching on the text keeps this decoupled from the provider's
+    exception classes.
+
+    Parameters
+    ----------
+    error:
+        The exception raised while downloading a single identifier.
+
+    Returns
+    -------
+    bool
+        ``True`` for a rate-limit error (retryable), ``False`` otherwise (fail fast).
+
+    """
+    text = str(error).lower()
+    return "429" in text or "too many requests" in text
+
+
+def backoff_delay(attempt: int) -> float:
+    """Return the exponential backoff, in seconds, for a zero-based retry attempt.
+
+    Attempt 0 waits the base delay; each subsequent attempt doubles it, spreading
+    retries out so a throttled key has time to recover.
+
+    Parameters
+    ----------
+    attempt:
+        Zero-based retry index (0 is the first retry).
+
+    Returns
+    -------
+    float
+        Seconds to sleep before the next attempt.
+
+    Raises
+    ------
+    ValueError
+        If ``attempt`` is negative.
+
+    """
+    if attempt < 0:
+        message = f"attempt must be non-negative, got {attempt}"
+        raise ValueError(message)
+    return _BACKOFF_BASE_SECONDS * (2.0**attempt)
