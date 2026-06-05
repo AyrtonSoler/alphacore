@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from ml.metrics import information_coefficient
 from ml.scorers import EbmScorer, LinearScorer
@@ -69,6 +70,7 @@ def test_ebm_recovers_linear_signal() -> None:
     assert information_coefficient(pred, y_te) > 0.5
 
 
+@pytest.mark.slow
 def test_ebm_beats_linear_on_pure_interaction() -> None:
     """On y = x0*x1 the EBM beats the linear baseline OOS; the linear scores ~0."""
     # A larger test block keeps the linear baseline's finite-sample IC near its true

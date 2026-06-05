@@ -38,6 +38,7 @@ def trust_weight(
     *,
     gain: float = _DEFAULT_GAIN,
     lambda_min: float = _DEFAULT_LAMBDA_MIN,
+    min_edge: float = 0.0,
 ) -> float:
     """Rules weight ``lambda`` in the rules/ML blend, earned out-of-sample.
 
@@ -53,13 +54,18 @@ def trust_weight(
     lambda_min:
         Floor on the rules weight: even a large, stable edge keeps at least this much
         of the rules score (the ML never gets more than ``1 - lambda_min``).
+    min_edge:
+        Minimum IC edge the ML must *exceed* to earn any weight. Above 0 it guards
+        against trusting a phantom edge that is just finite-sample noise — the
+        distrust the governor exists to encode. The edge is measured from this floor.
 
     Returns
     -------
     float
         ``lambda`` in ``[lambda_min, 1]``. Exactly 1.0 when the ML did not beat the
-        baseline OOS (``ic_ml <= ic_baseline``); otherwise ``1 - min(gain * edge,
-        1 - lambda_min)``, decreasing toward ``lambda_min`` as the edge grows.
+        baseline OOS by more than ``min_edge``; otherwise ``1 - min(gain * (edge -
+        min_edge), 1 - lambda_min)``, decreasing toward ``lambda_min`` as the edge
+        grows.
 
     References
     ----------
@@ -67,9 +73,9 @@ def trust_weight(
 
     """
     edge = ic_ml_oos - ic_baseline_oos
-    if edge <= 0.0:
+    if edge <= min_edge:
         return 1.0
-    ml_share = min(gain * edge, 1.0 - lambda_min)
+    ml_share = min(gain * (edge - min_edge), 1.0 - lambda_min)
     return 1.0 - ml_share
 
 

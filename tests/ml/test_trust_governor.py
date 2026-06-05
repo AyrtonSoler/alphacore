@@ -44,6 +44,14 @@ def test_lambda_decreases_as_edge_grows_but_stays_bounded() -> None:
     assert large == 0.5  # a big, stable edge saturates at lambda_min
 
 
+def test_min_edge_benches_a_phantom_edge() -> None:
+    """A tiny edge below min_edge is treated as noise -> pure rules (lambda = 1)."""
+    # Edge of +0.01 looks like a win, but below a 0.02 margin it earns nothing.
+    assert trust_weight(ic_ml_oos=0.01, ic_baseline_oos=0.0, min_edge=0.02) == 1.0
+    # The same edge above the margin does earn weight.
+    assert trust_weight(ic_ml_oos=0.05, ic_baseline_oos=0.0, min_edge=0.02) < 1.0
+
+
 def test_lambda_min_is_configurable() -> None:
     """The floor on rules weight is a pre-registered parameter."""
     lam = trust_weight(ic_ml_oos=0.5, ic_baseline_oos=0.0, lambda_min=0.7)
