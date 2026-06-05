@@ -38,6 +38,25 @@ from .value import c_fcf_yield
 
 _SESSIONS_PER_YEAR = 252
 
+# Canonical alpha sleeves and their member signals (§5.2). Risk signals are excluded
+# by design — they feed the regime overlay and optimizer risk model, never the alpha.
+DEFAULT_SLEEVES: dict[str, list[str]] = {
+    "quality": [
+        "quality_gross_profitability",
+        "quality_accruals",
+        "quality_asset_growth",
+        "quality_net_issuance",
+        "quality_piotroski",
+    ],
+    "value": [
+        "value_earnings_yield",
+        "value_book_to_market",
+        "value_ebitda_to_ev",
+        "value_fcf_yield",
+    ],
+    "momentum": ["momentum_roc12", "momentum_roc6", "momentum_trend"],
+}
+
 # Fields the Piotroski F-Score consumes, in the order its current/prior frames expect.
 _PIOTROSKI_FIELDS = [
     "net_income",
@@ -137,7 +156,7 @@ def assemble_cross_section(
     sectors: pd.Series[str],
     factor_design: pd.DataFrame,
     *,
-    sleeves: Mapping[str, Sequence[str]],
+    sleeves: Mapping[str, Sequence[str]] | None = None,
 ) -> pd.DataFrame:
     """Assemble the per-name residual-alpha panel for one rebalancing date.
 
@@ -162,7 +181,7 @@ def assemble_cross_section(
         regressors.
     sleeves:
         Mapping from sleeve name (e.g. ``"quality"``) to the signal columns that
-        compose it.
+        compose it. Defaults to :data:`DEFAULT_SLEEVES` (quality, value, momentum).
 
     Returns
     -------
@@ -173,6 +192,9 @@ def assemble_cross_section(
         cross-section level). Names not yet public on ``date`` are excluded.
 
     """
+    if sleeves is None:
+        sleeves = DEFAULT_SLEEVES
+
     # 1. Point-in-time cross-section: each ticker's last public row at/before date.
     cross = pd.DataFrame({ticker: frame.asof(date) for ticker, frame in signal_frames.items()}).T
 
@@ -187,6 +209,8 @@ def assemble_cross_section(
     panel = pd.DataFrame(index=cross.index)
     for sleeve, columns in sleeves.items():
         present = [column for column in columns if column in cross.columns]
+        if not present:
+            continue  # a sleeve with no available signals contributes nothing
         z_scores = pd.DataFrame(
             {column: c_zscore_sector_neutral(cross[column], sector_labels) for column in present}
         )

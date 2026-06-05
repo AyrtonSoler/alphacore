@@ -21,11 +21,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from signals.pipeline import assemble_cross_section
+from signals.pipeline import DEFAULT_SLEEVES, assemble_cross_section
 
 _QUALITY = ["quality_gross_profitability", "quality_accruals", "quality_piotroski"]
 _MOMENTUM = ["momentum_roc12", "momentum_roc6"]
 _SLEEVES = {"quality": _QUALITY, "momentum": _MOMENTUM}
+# Every signal across the canonical sleeves, so the default-sleeves path is covered.
+_ALL_SIGNALS = [col for cols in DEFAULT_SLEEVES.values() for col in cols]
 _DATES = pd.to_datetime(["2020-12-31", "2021-01-29"])
 
 
@@ -43,9 +45,8 @@ def _frames(values: pd.DataFrame) -> dict[str, pd.DataFrame]:
 def _setup(n: int = 24, seed: int = 0):
     rng = np.random.default_rng(seed)
     tickers = [f"T{i:02d}" for i in range(n)]
-    signal_cols = _QUALITY + _MOMENTUM
     values = pd.DataFrame(
-        rng.normal(size=(n, len(signal_cols))), index=tickers, columns=signal_cols
+        rng.normal(size=(n, len(_ALL_SIGNALS))), index=tickers, columns=_ALL_SIGNALS
     )
     sectors = pd.Series(["A", "B", "C"] * (n // 3), index=tickers)
     factor_design = pd.DataFrame(
@@ -86,6 +87,15 @@ def test_only_common_names_survive() -> None:
     assert tickers[0] not in panel.index
     assert tickers[1] not in panel.index
     assert tickers[2] in panel.index
+
+
+def test_defaults_to_canonical_sleeves() -> None:
+    """Without an explicit sleeves arg, the canonical quality/value/momentum run."""
+    frames, sectors, design, _ = _setup(seed=4)
+    panel = assemble_cross_section(frames, _DATES[-1], sectors, design)
+    for sleeve in DEFAULT_SLEEVES:
+        assert f"{sleeve}_residual" in panel.columns
+    assert "score" in panel.columns
 
 
 def test_not_yet_public_names_are_excluded() -> None:
