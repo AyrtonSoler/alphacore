@@ -18,9 +18,13 @@ regime overlay and the optimizer's risk model only.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 import pandas as pd
 
+from .cross_section import c_zscore_sector_neutral
 from .momentum import c_roc_6m, c_roc_12m, c_sma_50_200_signal
+from .neutralization import residualize_signal
 from .quality import (
     c_accruals,
     c_asset_growth,
@@ -110,3 +114,69 @@ def compute_ticker_signals(
         signals["risk_idiosyncratic_vol"] = c_idiosyncratic_vol(returns, market_returns)
 
     return signals
+
+
+def assemble_cross_section(
+    signal_frames: Mapping[str, pd.DataFrame],
+    date: pd.Timestamp,
+    sectors: pd.Series[str],
+    factor_design: pd.DataFrame,
+    *,
+    sleeves: Mapping[str, Sequence[str]],
+) -> pd.DataFrame:
+    """Assemble the per-name residual-alpha panel for one rebalancing date.
+
+    The keystone of the pipeline: it turns the per-ticker signal frames into the
+    factor-neutral residual-alpha score the optimizer consumes, chaining §5.3 and
+    §5.4 across the universe.
+
+    Parameters
+    ----------
+    signal_frames:
+        Mapping from ticker to its per-ticker signal frame
+        (:func:`compute_ticker_signals`), each date-indexed.
+    date:
+        The rebalancing date. Each ticker contributes its last public row at or
+        before this date (as-of), so the cross-section is point-in-time.
+    sectors:
+        Ticker -> GICS sector (from :func:`common.factor_model.gics_sector_map`),
+        for the sector-neutral z-score.
+    factor_design:
+        Ticker x factor exposures on ``date``
+        (:func:`common.factor_model.factor_exposures_at`), the neutralization
+        regressors.
+    sleeves:
+        Mapping from sleeve name (e.g. ``"quality"``) to the signal columns that
+        compose it.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indexed by the names common to the signals, sectors and factor design. One
+        ``"{sleeve}_residual"`` column per sleeve plus a combined ``"score"`` — each
+        orthogonal to every factor by construction (the §5.4 guarantee at the
+        cross-section level). Names not yet public on ``date`` are excluded.
+
+    """
+    # 1. Point-in-time cross-section: each ticker's last public row at/before date.
+    cross = pd.DataFrame({ticker: frame.asof(date) for ticker, frame in signal_frames.items()}).T
+
+    # 2. Restrict to names common to signals, a known sector, and a factor design.
+    common = cross.index.intersection(sectors.dropna().index).intersection(factor_design.index)
+    cross = cross.loc[common].dropna(how="all")  # drop not-yet-public (all-NaN) rows
+    sector_labels = sectors.loc[cross.index]
+    design = factor_design.loc[cross.index]
+
+    # 3. Per sleeve: sector-neutral z-score each signal, average into a composite,
+    #    then residualize the composite against the factors.
+    panel = pd.DataFrame(index=cross.index)
+    for sleeve, columns in sleeves.items():
+        present = [column for column in columns if column in cross.columns]
+        z_scores = pd.DataFrame(
+            {column: c_zscore_sector_neutral(cross[column], sector_labels) for column in present}
+        )
+        composite = z_scores.mean(axis=1)
+        panel[f"{sleeve}_residual"] = residualize_signal(composite, design)
+
+    panel["score"] = panel.mean(axis=1)
+    return panel
