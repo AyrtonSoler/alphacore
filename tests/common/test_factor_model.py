@@ -20,7 +20,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from common.factor_model import factor_exposures_at, load_factor_matrix
+from common.factor_model import (
+    factor_exposures_at,
+    gics_sector_map,
+    load_factor_matrix,
+)
 
 
 def _write_factor_csv(path: Path, rows: dict[str, list[float]]) -> None:
@@ -75,3 +79,29 @@ def test_factor_exposures_restricts_to_requested_tickers(tmp_path: Path) -> None
     matrices = {"beta": load_factor_matrix(beta)}
     x = factor_exposures_at(matrices, pd.Timestamp("2020-01-31"), tickers=["CCC", "AAA"])
     assert list(x.index) == ["CCC", "AAA"]
+
+
+def test_gics_sector_map_assigns_each_ticker_its_industry(tmp_path: Path) -> None:
+    """A ticker maps to the one industry whose file carries its contributions."""
+    fin = tmp_path / "f_Financials.csv"
+    tech = tmp_path / "f_Information Technology.csv"
+    # AAA & BBB are financials (non-zero in fin only), CCC is tech.
+    _write_factor_csv(fin, {"2020-01-31": [0.01, 0.02, 0.0], "2020-02-28": [0.0, 0.01, 0.0]})
+    _write_factor_csv(tech, {"2020-01-31": [0.0, 0.0, 0.03], "2020-02-28": [0.0, 0.0, 0.01]})
+    industries = {
+        "Financials": load_factor_matrix(fin),
+        "Information Technology": load_factor_matrix(tech),
+    }
+    sectors = gics_sector_map(industries)
+    assert sectors["AAA"] == "Financials"
+    assert sectors["BBB"] == "Financials"
+    assert sectors["CCC"] == "Information Technology"
+
+
+def test_gics_sector_map_marks_unassigned_ticker_nan(tmp_path: Path) -> None:
+    """A ticker with no non-zero industry contribution is unassigned (NaN)."""
+    fin = tmp_path / "f_Financials.csv"
+    _write_factor_csv(fin, {"2020-01-31": [0.01, 0.0, 0.0]})
+    sectors = gics_sector_map({"Financials": load_factor_matrix(fin)})
+    assert sectors["AAA"] == "Financials"
+    assert pd.isna(sectors["BBB"])  # all-zero -> no sector

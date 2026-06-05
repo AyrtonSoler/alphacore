@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
@@ -77,3 +78,37 @@ def factor_exposures_at(
     if tickers is not None:
         design = design.reindex(index=list(tickers))
     return design.dropna()
+
+
+def gics_sector_map(industry_matrices: Mapping[str, pd.DataFrame]) -> pd.Series[str]:
+    """Derive each ticker's GICS sector from the 11 industry contribution files.
+
+    Parameters
+    ----------
+    industry_matrices:
+        Mapping from GICS sector name to its loaded industry matrix (from
+        :func:`load_factor_matrix`). A name has non-zero contributions in exactly
+        one industry — its own — across the sample.
+
+    Returns
+    -------
+    pandas.Series
+        Indexed by ticker, the sector name with the largest absolute total
+        contribution. Tickers with no non-zero contribution in any industry (never
+        a member) are NaN.
+
+    Notes
+    -----
+    Membership is read from the whole sample, not a single day: an industry factor's
+    contribution can be zero on a given date even for its own members, so summing the
+    absolute contribution over time identifies the sole industry robustly.
+
+    """
+    totals = pd.DataFrame(
+        {sector: matrix.abs().sum(axis=0) for sector, matrix in industry_matrices.items()}
+    )
+    # idxmax over string columns returns the column labels (sector names); the
+    # pandas stub mistypes it as Series[int], so cast to the true Series[str].
+    sectors = cast("pd.Series[str]", totals.idxmax(axis=1))
+    never_member = totals.sum(axis=1) == 0.0
+    return sectors.mask(never_member)
