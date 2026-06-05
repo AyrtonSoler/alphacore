@@ -34,6 +34,7 @@ import pandas as pd
 
 # Trading-session conventions (see module Notes; sessions, not calendar days).
 _SESSIONS_PER_MONTH = 21
+_SESSIONS_PER_HALF_YEAR = 126
 _SESSIONS_PER_YEAR = 252
 _SMA_FAST = 50
 _SMA_SLOW = 200
@@ -157,6 +158,38 @@ def c_roc_12m(close: pd.Series[float]) -> pd.Series[float]:
 
     """
     formation_start = close.shift(_SESSIONS_PER_YEAR)
+    formation_end = close.shift(_SESSIONS_PER_MONTH)
+    return formation_end / formation_start - 1.0
+
+
+def c_roc_6m(close: pd.Series[float]) -> pd.Series[float]:
+    """6-1 momentum: trailing 6-month return skipping the most recent month.
+
+    Parameters
+    ----------
+    close:
+        Closing prices indexed by trading day, ascending.
+
+    Returns
+    -------
+    pandas.Series
+        Rate of change measured from the price ~6 months ago to the price ~1
+        month ago: ``close[t-21] / close[t-126] - 1``. NaN until both lagged
+        prices are available.
+
+    Notes
+    -----
+    A shorter-horizon companion to :func:`c_roc_12m` used as confirmation rather
+    than the primary momentum signal. It shares the "skip the last month" (``-1``)
+    convention so the most recent month's short-term reversal never contaminates
+    it, keeping the value at ``t`` free of look-ahead at rebalancing.
+
+    References
+    ----------
+    Formation window from [AMP2013]_; momentum effect from [JT1993]_.
+
+    """
+    formation_start = close.shift(_SESSIONS_PER_HALF_YEAR)
     formation_end = close.shift(_SESSIONS_PER_MONTH)
     return formation_end / formation_start - 1.0
 

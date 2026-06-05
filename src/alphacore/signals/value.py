@@ -31,65 +31,9 @@ References
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
-
-def _safe_divide(
-    numerator: pd.Series[float],
-    denominator: pd.Series[float],
-    *,
-    require_positive_denominator: bool,
-) -> pd.Series[float]:
-    """Divide two series, returning NaN where the result is undefined.
-
-    Parameters
-    ----------
-    numerator, denominator:
-        Aligned float series.
-    require_positive_denominator:
-        When True, a non-positive denominator (``<= 0``) is treated as undefined.
-        When False, only an exactly-zero denominator is undefined (the sign of
-        the ratio is allowed to carry economic meaning).
-
-    Returns
-    -------
-    pandas.Series
-        ``numerator / denominator`` with undefined positions set to NaN. No
-        ``inf`` is ever produced, so the operation raises no divide warnings.
-
-    """
-    invalid = denominator <= 0 if require_positive_denominator else denominator == 0
-    safe_denominator = denominator.where(~invalid, other=np.nan)
-    return numerator / safe_denominator
-
-
-def _apply_pit(
-    values: pd.Series[float],
-    release_date: pd.Series[pd.Timestamp] | None,
-) -> pd.Series[float]:
-    """Mask values not yet public as of their index date (point-in-time guard).
-
-    Parameters
-    ----------
-    values:
-        The computed signal, indexed by observation date.
-    release_date:
-        Per-observation publication date of the underlying fundamental, aligned
-        to ``values.index``. ``None`` disables the guard.
-
-    Returns
-    -------
-    pandas.Series
-        ``values`` with every position whose ``release_date`` is strictly after
-        its index date set to NaN.
-
-    """
-    if release_date is None:
-        return values
-    index_dates = pd.Series(pd.to_datetime(values.index), index=values.index)
-    not_yet_public = pd.to_datetime(release_date) > index_dates
-    return values.where(~not_yet_public, other=np.nan)
+from ._common import apply_pit, safe_divide
 
 
 def c_pe_ratio(
@@ -125,8 +69,8 @@ def c_pe_ratio(
     Value premium from [FF1992]_; relative valuation from [Damodaran1994]_.
 
     """
-    pe = _safe_divide(close, eps_ttm, require_positive_denominator=True)
-    return _apply_pit(pe, release_date)
+    pe = safe_divide(close, eps_ttm, require_positive_denominator=True)
+    return apply_pit(pe, release_date)
 
 
 def c_pb_ratio(
@@ -162,8 +106,8 @@ def c_pb_ratio(
     Book-to-market value factor from [FF1992]_ and [FF1993]_.
 
     """
-    pb = _safe_divide(close, book_value_per_share, require_positive_denominator=True)
-    return _apply_pit(pb, release_date)
+    pb = safe_divide(close, book_value_per_share, require_positive_denominator=True)
+    return apply_pit(pb, release_date)
 
 
 def c_ev_ebitda(
@@ -198,8 +142,8 @@ def c_ev_ebitda(
     Enterprise multiples from [Damodaran1994]_.
 
     """
-    ev_ebitda = _safe_divide(ev, ebitda_ttm, require_positive_denominator=True)
-    return _apply_pit(ev_ebitda, release_date)
+    ev_ebitda = safe_divide(ev, ebitda_ttm, require_positive_denominator=True)
+    return apply_pit(ev_ebitda, release_date)
 
 
 def c_fcf_yield(
@@ -235,5 +179,5 @@ def c_fcf_yield(
     Cash-flow-based value from [Damodaran1994]_; value premium from [FF1992]_.
 
     """
-    fcfy = _safe_divide(fcf_ttm, market_cap, require_positive_denominator=True)
-    return _apply_pit(fcfy, release_date)
+    fcfy = safe_divide(fcf_ttm, market_cap, require_positive_denominator=True)
+    return apply_pit(fcfy, release_date)

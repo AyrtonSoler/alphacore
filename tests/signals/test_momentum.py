@@ -17,6 +17,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from signals.momentum import (
+    c_roc_6m,
     c_roc_12m,
     c_rsi_14d,
     c_sma_50_200_signal,
@@ -75,6 +76,28 @@ def test_roc_12m_excludes_last_month() -> None:
 
     assert not np.isnan(baseline)
     assert after == baseline
+
+
+def test_roc_6m_excludes_last_month() -> None:
+    """ROC 6-1 at t uses prices <= t-21, so doubling the last 21 prices changes nothing."""
+    close = _random_walk(300)
+    t = len(close) - 1
+    baseline = c_roc_6m(close).iloc[t]
+
+    perturbed = close.copy()
+    perturbed.iloc[t - 20 :] *= 2.0  # touch only the most recent month
+    after = c_roc_6m(perturbed).iloc[t]
+
+    assert not np.isnan(baseline)
+    assert after == baseline
+
+
+def test_roc_6m_matches_definition() -> None:
+    """ROC 6-1 equals close[t-21] / close[t-126] - 1 (6 months, skip last month)."""
+    close = _random_walk(300)
+    t = len(close) - 1
+    expected = close.iloc[t - 21] / close.iloc[t - 126] - 1.0
+    assert np.isclose(c_roc_6m(close).iloc[t], expected)
 
 
 def test_rsi_14d_in_zero_to_hundred_range() -> None:
