@@ -40,6 +40,14 @@ FIELD_MAP: dict[str, str] = {
     "current_liabilities": "fbs_current_liabilities",
     "shares_outstanding": "fis_weighted_average_diluted_shares_outstanding",
     "cash_flow_operations": "fcf_net_cash_from_operating_activities",
+    # Value inputs (§5.2). The curator already computes price-yield ratios oriented
+    # "higher = cheaper"; EV/EBITDA and FCF-yield are built from these raw fields.
+    "earnings_to_price": "c_earnings_to_price",
+    "book_to_price": "c_book_to_price",
+    "market_cap": "c_market_cap",
+    "net_debt": "fbs_net_debt",
+    "ebitda": "fis_earnings_before_interest_tax_depreciation_and_amortization",
+    "free_cash_flow": "fcf_free_cash_flow",
 }
 
 

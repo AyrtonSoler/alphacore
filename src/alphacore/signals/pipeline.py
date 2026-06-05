@@ -22,6 +22,7 @@ from collections.abc import Mapping, Sequence
 
 import pandas as pd
 
+from ._common import apply_pit, safe_divide
 from .cross_section import c_zscore_sector_neutral
 from .momentum import c_roc_6m, c_roc_12m, c_sma_50_200_signal
 from .neutralization import residualize_signal
@@ -33,6 +34,7 @@ from .quality import (
     c_piotroski_f,
 )
 from .risk import c_drawdown, c_idiosyncratic_vol, c_realized_vol
+from .value import c_fcf_yield
 
 _SESSIONS_PER_YEAR = 252
 
@@ -106,6 +108,19 @@ def compute_ticker_signals(
     signals["momentum_roc12"] = c_roc_12m(close)
     signals["momentum_roc6"] = c_roc_6m(close)
     signals["momentum_trend"] = c_sma_50_200_signal(close)
+
+    # Value (§5.2) — all oriented "higher = cheaper". The curator already provides
+    # the price-yield ratios; EBITDA/EV and FCF-yield are built from raw fields.
+    enterprise_value = frame["market_cap"] + frame["net_debt"]
+    signals["value_earnings_yield"] = apply_pit(frame["earnings_to_price"], release_date)
+    signals["value_book_to_market"] = apply_pit(frame["book_to_price"], release_date)
+    signals["value_ebitda_to_ev"] = apply_pit(
+        safe_divide(frame["ebitda"], enterprise_value, require_positive_denominator=True),
+        release_date,
+    )
+    signals["value_fcf_yield"] = c_fcf_yield(
+        frame["free_cash_flow"], frame["market_cap"], release_date
+    )
 
     returns = close.pct_change(fill_method=None)
     signals["risk_realized_vol"] = c_realized_vol(returns)

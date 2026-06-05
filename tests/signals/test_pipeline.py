@@ -42,6 +42,13 @@ def _synthetic_frame(release_date: pd.Timestamp) -> pd.DataFrame:
             "current_liabilities": 500.0 * step,
             "shares_outstanding": 50.0 * np.where(np.arange(_N) < _N // 2, 1.0, 0.98),
             "cash_flow_operations": 150.0 * step,
+            # Value inputs.
+            "earnings_to_price": 0.05 * step,
+            "book_to_price": 0.30 * step,
+            "market_cap": 5000.0,
+            "net_debt": 1000.0,
+            "ebitda": 400.0 * step,
+            "free_cash_flow": 200.0 * step,
             "release_date": release_date,
         },
         index=idx,
@@ -61,6 +68,10 @@ def test_produces_expected_signal_columns() -> None:
         "momentum_roc12",
         "momentum_roc6",
         "momentum_trend",
+        "value_earnings_yield",
+        "value_book_to_market",
+        "value_ebitda_to_ev",
+        "value_fcf_yield",
         "risk_realized_vol",
         "risk_drawdown",
     }
@@ -93,3 +104,26 @@ def test_realized_vol_is_non_negative() -> None:
     frame = _synthetic_frame(pd.Timestamp("2019-01-01"))
     vol = compute_ticker_signals(frame)["risk_realized_vol"].dropna()
     assert (vol >= 0).all()
+
+
+def test_value_signals_are_oriented_higher_is_cheaper() -> None:
+    """Value yields are positive (cheaper = higher) and EBITDA/EV uses EV correctly."""
+    frame = _synthetic_frame(pd.Timestamp("2019-01-01"))
+    signals = compute_ticker_signals(frame)
+    last = signals.iloc[-1]
+    assert last["value_earnings_yield"] > 0  # E/P from the curator
+    assert last["value_book_to_market"] > 0  # B/P from the curator
+    # FCF yield = FCF / market cap = 200*1.1 / 5000.
+    assert np.isclose(last["value_fcf_yield"], 200.0 * 1.1 / 5000.0)
+    # EBITDA/EV = EBITDA / (market_cap + net_debt) = 400*1.1 / (5000 + 1000).
+    assert np.isclose(last["value_ebitda_to_ev"], 400.0 * 1.1 / 6000.0)
+
+
+def test_value_signals_respect_point_in_time() -> None:
+    """Value signals are NaN before the fundamentals' release date."""
+    release = pd.Timestamp("2019-12-31")
+    frame = _synthetic_frame(release)
+    signals = compute_ticker_signals(frame)
+    ey = signals["value_earnings_yield"]
+    assert ey[frame.index < release].isna().all()
+    assert ey[frame.index >= release].notna().any()
