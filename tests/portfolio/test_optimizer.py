@@ -112,6 +112,19 @@ def test_liquidity_cap_limits_thin_name() -> None:
     assert w.iloc[0] <= kappa * s["adv"].iloc[0] / _AUM + 1e-5
 
 
+def test_enforces_minimum_holdings() -> None:
+    """When the raw solution concentrates in <15 names, the floor spreads it to >=15."""
+    s = _setup(seed=5)
+    loose = {"gamma_risk": 0.0, "eps_factor": 10.0, "eps_sector": 10.0}
+    # min_holdings=1 leaves the raw, concentrated alpha-maximising solution.
+    concentrated = _optimize(s, params=OptimizerParams(min_holdings=1, **loose))
+    assert int((concentrated > 1e-4).sum()) < 15
+    # min_holdings=15 forces at least 15 names while keeping the official cap.
+    spread = _optimize(s, params=OptimizerParams(min_holdings=15, **loose))
+    assert int((spread > 1e-4).sum()) >= 15
+    assert (spread <= 0.125 + 1e-6).all()
+
+
 def test_market_impact_shrinks_trades_in_illiquid_names() -> None:
     """A square-root market-impact cost makes trading a thin-ADV name less attractive."""
     s = _setup(seed=4)
