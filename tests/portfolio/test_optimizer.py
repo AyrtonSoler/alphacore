@@ -112,6 +112,20 @@ def test_liquidity_cap_limits_thin_name() -> None:
     assert w.iloc[0] <= kappa * s["adv"].iloc[0] / _AUM + 1e-5
 
 
+def test_market_impact_shrinks_trades_in_illiquid_names() -> None:
+    """A square-root market-impact cost makes trading a thin-ADV name less attractive."""
+    s = _setup(seed=4)
+    s["adv"] = s["adv"].copy()
+    s["adv"].iloc[0] = 2_000_000.0  # very thin liquidity
+    s["alpha"] = s["alpha"].copy()
+    s["alpha"].iloc[0] = 0.10  # but very attractive alpha
+    # Loosen the hard bands/liquidity cap so the *soft* impact cost is what differs.
+    loose = {"eps_factor": 10.0, "eps_sector": 10.0, "kappa_liquidity": 10.0}
+    no_impact = _optimize(s, params=OptimizerParams(market_impact_coef=0.0, **loose))
+    with_impact = _optimize(s, params=OptimizerParams(market_impact_coef=20.0, **loose))
+    assert with_impact.iloc[0] < no_impact.iloc[0]
+
+
 def test_turnover_penalty_pulls_toward_previous() -> None:
     """A large turnover penalty keeps the solution close to the previous weights."""
     s = _setup(seed=2)

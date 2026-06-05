@@ -50,6 +50,7 @@ class OptimizerParams:
     eps_sector: float = 0.03
     gamma_risk: float = 1.0
     tau_turnover: float = 0.0
+    market_impact_coef: float = 0.0
     kappa_liquidity: float = 0.10
     min_holdings: int = 15
 
@@ -131,6 +132,13 @@ def optimize_portfolio(
         - params.gamma_risk * cp.quad_form(w, cp.psd_wrap(sigma))
         - params.tau_turnover * cp.norm1(w - w_prev)
     )
+
+    if params.market_impact_coef > 0.0:
+        # Square-root law: total impact cost ~ sigma * sqrt(AUM/ADV) * |trade|^{3/2},
+        # convex in the trade size. Thin ADV -> larger per-unit cost -> smaller trade.
+        sigma_diag = np.sqrt(np.diag(sigma))
+        impact_coef = params.market_impact_coef * sigma_diag * np.sqrt(inputs.aum / adv)
+        objective = objective - cp.sum(cp.multiply(impact_coef, cp.power(cp.abs(w - w_prev), 1.5)))
 
     constraints = [
         cp.sum(w) == 1.0 - inputs.cash,
