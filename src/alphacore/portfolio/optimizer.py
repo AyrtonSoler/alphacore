@@ -19,8 +19,9 @@ portfolio's active factor exposure to ~0, so the attribution (§5.9) shows style
 contributions near zero *by design*.
 
 The box cap resolves the 12.5% "waterfall" natively (no manual redistribution), and
-the ``tau`` turnover term replaces v2's Top-30/45 buffer with a principled cost.
-Market impact and the min-15 cardinality floor are layered on in follow-ups.
+the ``tau`` turnover term replaces v2's Top-30/45 buffer with a principled cost. A
+square-root market-impact cost and the min-15 cardinality floor (via a convex
+relaxation) are included; see :func:`optimize_portfolio`.
 
 References
 ----------
