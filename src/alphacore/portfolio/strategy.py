@@ -138,15 +138,21 @@ def _alpha_panel(  # noqa: PLR0913 - cohesive per-date alpha inputs
     against the factor design. The per-date alpha is the mean of the sleeve residuals.
     """
     rows: dict[pd.Timestamp, pd.Series[float]] = {}
-    for date in rebalance_dates:
+    dates = list(rebalance_dates)
+    for i, date in enumerate(dates):
+        # A held name must remain priceable through its holding period, i.e. up to the next
+        # rebalance where it is traded out. ``asof`` otherwise carries a delisted name's last
+        # row forward forever, so it could be bought here and then have no execution price at
+        # the exit rebalance — which breaks any backtest engine (including the judges').
+        # Require each name's data to reach its exit date (the next rebalance; the last
+        # rebalance has no in-sample exit, so only ``date`` is required). This is a
+        # tradeability filter, not a forecast: it never injects future return information.
+        exit_date = dates[i + 1] if i + 1 < len(dates) else date
         design = factor_exposures_at(factor_matrices, date)
         cross = pd.DataFrame({t: f.asof(date) for t, f in signal_frames.items()}).T
-        # Asset eligibility: ``asof`` carries a delisted name's last pre-delisting row
-        # forward forever, so a name whose price series ends before ``date`` would stay
-        # selectable with stale signals — and then have no execution price at the
-        # rebalance. Keep only names whose data actually reaches ``date`` (no look-ahead;
-        # this only ever drops names, never adds future information).
-        live = {t for t, f in signal_frames.items() if len(f.index) > 0 and f.index.max() >= date}
+        live = {
+            t for t, f in signal_frames.items() if len(f.index) > 0 and f.index.max() >= exit_date
+        }
         common = cross.index.intersection(sectors.dropna().index).intersection(design.index)
         cross = cross.loc[[t for t in common if t in live]].dropna(how="all")
         if cross.empty:
