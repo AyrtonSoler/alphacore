@@ -54,6 +54,9 @@ class BacktestData:
     adv:
         Optional ticker -> average dollar volume for the liquidity cap. Defaults to
         deep liquidity (no binding cap).
+    cash_schedule:
+        Optional date -> cash weight from the regime overlay (§5.7); read as-of each
+        rebalancing date. When absent, the fixed ``BacktestConfig.cash`` is used.
 
     """
 
@@ -62,6 +65,7 @@ class BacktestData:
     benchmark_weights: pd.DataFrame
     volatility: pd.Series[float] | None = None
     adv: pd.Series[float] | None = None
+    cash_schedule: pd.Series[float] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -92,6 +96,7 @@ def construct_portfolios(
     rebalance_dates: Sequence[pd.Timestamp],
     data: BacktestData,
     config: BacktestConfig | None = None,
+    alpha_override: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Run the rebalance loop and return the date x ticker weight panel.
 
@@ -105,6 +110,10 @@ def construct_portfolios(
         The cross-date market data (:class:`BacktestData`).
     config:
         Run configuration (:class:`BacktestConfig`); defaults are used if omitted.
+    alpha_override:
+        Optional pre-computed expected-alpha panel (date x ticker), e.g. the
+        ML-governed score. When given, it replaces the rules score from
+        ``assemble_cross_section`` as the optimizer's alpha.
 
     Returns
     -------
@@ -119,26 +128,38 @@ def construct_portfolios(
 
     for date in rebalance_dates:
         full_design = factor_exposures_at(data.factor_matrices, date)
-        scores = assemble_cross_section(
-            signal_frames, date, data.sectors, full_design, sleeves=config.sleeves
+        if alpha_override is not None:
+            empty = pd.Series(dtype=float)
+            row = alpha_override.loc[date] if date in alpha_override.index else empty
+            alpha = cast("pd.Series[float]", row).dropna()
+        else:
+            scores = assemble_cross_section(
+                signal_frames, date, data.sectors, full_design, sleeves=config.sleeves
+            )
+            alpha = scores["score"].dropna()
+        # Restrict to names with a factor design and a known sector (the optimizer
+        # needs both); for the assemble path this intersection is already satisfied.
+        universe = alpha.index.intersection(full_design.index).intersection(
+            data.sectors.dropna().index
         )
-        alpha = scores["score"].dropna()
+        alpha = alpha.reindex(universe)
         if alpha.empty:
             continue
-        universe = alpha.index
 
+        cash = _cash_for(data.cash_schedule, date, config.cash)
         design = full_design.reindex(universe)
         vol = _risk_volatility(signal_frames, universe, date, data.volatility)
         covariance = pd.DataFrame(np.diag(vol.to_numpy() ** 2), index=universe, columns=universe)
         # asof(scalar) returns the row as a Series; the stub widens it to a union.
         bench_row = cast("pd.Series[float]", data.benchmark_weights.asof(date))
         bench = bench_row.reindex(universe).fillna(0.0)
-        # Renormalize to the investable universe: the active-risk reference is the
-        # part of the KN600 we can actually hold, so active weights (and the factor /
-        # sector bands) stay well-defined even when the universe is a benchmark subset.
+        # Renormalize the benchmark to the *invested* budget (1 - cash) over the
+        # investable universe, so active weights reflect stock selection only — the
+        # cash held by the regime overlay is a deliberate top-down bet, not active
+        # stock risk, and would otherwise blow through the sector/factor bands.
         bench_total = bench.sum()
         if bench_total > 0:
-            bench = bench / bench_total
+            bench = bench / bench_total * (1.0 - cash)
         prev = previous.reindex(universe).fillna(0.0) if previous is not None else bench
 
         inputs = OptimizerInputs(
@@ -149,7 +170,7 @@ def construct_portfolios(
             previous_weights=prev,
             sectors=data.sectors.reindex(universe),
             adv=_series_for(data.adv, universe, _DEEP_ADV),
-            cash=config.cash,
+            cash=cash,
             aum=config.aum,
         )
         weights = optimize_portfolio(inputs, config.params)
@@ -166,6 +187,14 @@ def _series_for(
     if source is None:
         return pd.Series(default, index=universe, dtype=float)
     return source.reindex(universe).fillna(default)
+
+
+def _cash_for(schedule: pd.Series[float] | None, date: pd.Timestamp, default: float) -> float:
+    """Cash weight for ``date`` from the regime schedule (as-of), else the default."""
+    if schedule is None:
+        return default
+    value = schedule.asof(date)
+    return float(value) if pd.notna(value) else default
 
 
 def _risk_volatility(

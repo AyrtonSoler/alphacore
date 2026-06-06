@@ -92,6 +92,16 @@ def test_uses_realized_vol_risk_model_from_frames() -> None:
     assert not np.allclose(realized.to_numpy(), aligned.to_numpy())
 
 
+def test_regime_cash_schedule_sets_per_date_budget() -> None:
+    """A per-date cash schedule (regime overlay) drives each date's invested budget."""
+    frames, data = _build()
+    schedule = pd.Series([0.05, 0.30], index=_DATES)  # risk-on then risk-off
+    data = dataclasses.replace(data, cash_schedule=schedule)
+    panel = construct_portfolios(frames, _DATES, data, BacktestConfig(sleeves=_SLEEVES))
+    assert np.isclose(panel.loc[_DATES[0]].sum(), 1.0 - 0.05, atol=1e-4)
+    assert np.isclose(panel.loc[_DATES[1]].sum(), 1.0 - 0.30, atol=1e-4)
+
+
 def test_handles_partial_benchmark_coverage() -> None:
     """A universe holding only a slice of benchmark weight is renormalized, not infeasible."""
     frames, data = _build()
