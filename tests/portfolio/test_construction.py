@@ -16,6 +16,8 @@ Acceptance
 
 from __future__ import annotations
 
+import dataclasses
+
 import numpy as np
 import pandas as pd
 
@@ -69,6 +71,16 @@ def test_each_date_is_long_only_capped_and_budgeted() -> None:
         assert (row >= -1e-6).all()
         assert (row <= 0.125 + 1e-6).all()
         assert np.isclose(row.sum(), 1.0 - _CASH, atol=1e-4)
+
+
+def test_handles_partial_benchmark_coverage() -> None:
+    """A universe holding only a slice of benchmark weight is renormalized, not infeasible."""
+    frames, data = _build()
+    # Benchmark sums to ~0.1 over the universe (a small replicable subset).
+    data = dataclasses.replace(data, benchmark_weights=data.benchmark_weights * 0.1)
+    panel = construct_portfolios(frames, _DATES, data, BacktestConfig(sleeves=_SLEEVES, cash=_CASH))
+    for date in _DATES:
+        assert np.isclose(panel.loc[date].sum(), 1.0 - _CASH, atol=1e-4)
 
 
 def test_portfolio_is_factor_neutral_each_date() -> None:

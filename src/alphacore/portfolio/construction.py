@@ -131,6 +131,12 @@ def construct_portfolios(
         # asof(scalar) returns the row as a Series; the stub widens it to a union.
         bench_row = cast("pd.Series[float]", data.benchmark_weights.asof(date))
         bench = bench_row.reindex(universe).fillna(0.0)
+        # Renormalize to the investable universe: the active-risk reference is the
+        # part of the KN600 we can actually hold, so active weights (and the factor /
+        # sector bands) stay well-defined even when the universe is a benchmark subset.
+        bench_total = bench.sum()
+        if bench_total > 0:
+            bench = bench / bench_total
         prev = previous.reindex(universe).fillna(0.0) if previous is not None else bench
 
         inputs = OptimizerInputs(
