@@ -37,8 +37,13 @@ def _build() -> tuple[dict[str, pd.DataFrame], BacktestData]:
     rng = np.random.default_rng(0)
     # Per-ticker signal frames: constant over the two dates, varying across tickers.
     values = pd.DataFrame(rng.normal(size=(12, 3)), index=_TICKERS, columns=_SIGNAL_COLS)
+    vols = pd.Series(rng.uniform(0.1, 0.6, 12), index=_TICKERS)  # per-name realized vol
     frames = {
-        t: pd.DataFrame({c: [values.loc[t, c]] * len(_DATES) for c in _SIGNAL_COLS}, index=_DATES)
+        t: pd.DataFrame(
+            {c: [values.loc[t, c]] * len(_DATES) for c in _SIGNAL_COLS}
+            | {"risk_realized_vol": [vols[t]] * len(_DATES)},
+            index=_DATES,
+        )
         for t in _TICKERS
     }
     sectors = pd.Series(["A", "B", "C"] * 4, index=_TICKERS)
@@ -71,6 +76,20 @@ def test_each_date_is_long_only_capped_and_budgeted() -> None:
         assert (row >= -1e-6).all()
         assert (row <= 0.125 + 1e-6).all()
         assert np.isclose(row.sum(), 1.0 - _CASH, atol=1e-4)
+
+
+def test_uses_realized_vol_risk_model_from_frames() -> None:
+    """The per-date realized-vol risk model changes the portfolio vs a flat risk model."""
+    frames, data = _build()
+    # Low cardinality floor + meaningful risk aversion so the risk model can act.
+    cfg = BacktestConfig(
+        sleeves=_SLEEVES, cash=_CASH, params=OptimizerParams(min_holdings=3, gamma_risk=5.0)
+    )
+    realized = construct_portfolios(frames, _DATES, data, cfg)
+    flat = dataclasses.replace(data, volatility=pd.Series(0.3, index=_TICKERS))
+    flat_risk = construct_portfolios(frames, _DATES, flat, cfg)
+    aligned = flat_risk.reindex(columns=realized.columns).fillna(0.0)
+    assert not np.allclose(realized.to_numpy(), aligned.to_numpy())
 
 
 def test_handles_partial_benchmark_coverage() -> None:

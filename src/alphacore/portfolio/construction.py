@@ -32,6 +32,8 @@ from .optimizer import OptimizerInputs, OptimizerParams, optimize_portfolio
 
 _DEFAULT_VOLATILITY = 1.0
 _DEEP_ADV = 1e15  # effectively unlimited liquidity when no ADV is supplied
+_RISK_VOL_COLUMN = "risk_realized_vol"
+_VOL_FLOOR = 1e-3  # keep the diagonal risk model strictly positive-definite
 
 
 @dataclasses.dataclass(frozen=True)
@@ -126,7 +128,7 @@ def construct_portfolios(
         universe = alpha.index
 
         design = full_design.reindex(universe)
-        vol = _series_for(data.volatility, universe, _DEFAULT_VOLATILITY)
+        vol = _risk_volatility(signal_frames, universe, date, data.volatility)
         covariance = pd.DataFrame(np.diag(vol.to_numpy() ** 2), index=universe, columns=universe)
         # asof(scalar) returns the row as a Series; the stub widens it to a union.
         bench_row = cast("pd.Series[float]", data.benchmark_weights.asof(date))
@@ -164,3 +166,30 @@ def _series_for(
     if source is None:
         return pd.Series(default, index=universe, dtype=float)
     return source.reindex(universe).fillna(default)
+
+
+def _risk_volatility(
+    signal_frames: Mapping[str, pd.DataFrame],
+    universe: pd.Index[str],
+    date: pd.Timestamp,
+    override: pd.Series[float] | None,
+) -> pd.Series[float]:
+    """Per-name volatility for the diagonal risk model.
+
+    Uses a static ``override`` when supplied; otherwise reads each name's realized
+    volatility as-of ``date`` from its signal frame (point-in-time — only data up to
+    the rebalancing date). Missing values fall back to the cross-sectional median so
+    a name without an estimate carries typical, not zero, risk.
+    """
+    if override is not None:
+        source = override.reindex(universe)
+    else:
+        values = {
+            ticker: cast("float", frame[_RISK_VOL_COLUMN].asof(date))
+            for ticker, frame in signal_frames.items()
+            if ticker in universe and _RISK_VOL_COLUMN in frame.columns
+        }
+        source = pd.Series(values, dtype=float).reindex(universe)
+    median = source.median()
+    fallback = float(median) if pd.notna(median) else _DEFAULT_VOLATILITY
+    return source.fillna(fallback).clip(lower=_VOL_FLOOR)
