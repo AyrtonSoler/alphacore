@@ -20,6 +20,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from ml.allocation import AllocatorParams
 from portfolio.strategy import StrategyParams, build_strategy_weights, select_rebalance_dates
 
 _TICKERS = [f"T{i:02d}" for i in range(12)]
@@ -88,6 +89,74 @@ def test_each_date_is_long_only_capped_and_budgeted() -> None:
         assert (row >= -1e-6).all()
         assert (row <= params.cap_per_name + 1e-6).all()
         assert np.isclose(row.sum(), 1.0 - _CASH, atol=1e-4)
+
+
+def test_ml_allocator_retilts_held_weights_without_changing_selection() -> None:
+    """The ML overlay re-sizes the held names but never changes which names are held."""
+    frames, factor_matrices, sectors, benchmark = _build()
+    rng = np.random.default_rng(7)
+    predictions = pd.DataFrame(
+        rng.normal(size=(len(_DATES), len(_TICKERS))), index=_DATES, columns=_TICKERS
+    )
+    lam = pd.Series(0.3, index=_DATES)
+
+    base = build_strategy_weights(
+        frames,
+        factor_matrices,
+        sectors,
+        benchmark,
+        _DATES,
+        StrategyParams(sleeves=_SLEEVES, min_holdings=3),
+    )
+    tilted = build_strategy_weights(
+        frames,
+        factor_matrices,
+        sectors,
+        benchmark,
+        _DATES,
+        StrategyParams(sleeves=_SLEEVES, min_holdings=3, allocator=AllocatorParams()),
+        ml_predictions=predictions,
+        ml_lambda=lam,
+    )
+
+    # Same names held each date (selection is Q+M's, untouched by the overlay).
+    for date in _DATES:
+        assert set(base.loc[date][base.loc[date] > 1e-6].index) == set(
+            tilted.loc[date][tilted.loc[date] > 1e-6].index
+        )
+    # But the money split differs, and stays long-only / capped / budgeted.
+    assert not np.allclose(base.to_numpy(), tilted.reindex_like(base).to_numpy())
+    for date in _DATES:
+        row = tilted.loc[date]
+        assert (row >= -1e-6).all()
+        assert (row <= StrategyParams().cap_per_name + 1e-6).all()
+        assert np.isclose(row.sum(), 1.0 - StrategyParams().cash, atol=1e-4)
+
+
+def test_ml_allocator_disabled_by_default() -> None:
+    """No allocator (the definitive strategy default) => equal-weight, predictions ignored."""
+    frames, factor_matrices, sectors, benchmark = _build()
+    predictions = pd.DataFrame(1.0, index=_DATES, columns=_TICKERS)
+    default = build_strategy_weights(
+        frames,
+        factor_matrices,
+        sectors,
+        benchmark,
+        _DATES,
+        StrategyParams(sleeves=_SLEEVES, min_holdings=3),
+    )
+    with_preds = build_strategy_weights(
+        frames,
+        factor_matrices,
+        sectors,
+        benchmark,
+        _DATES,
+        StrategyParams(sleeves=_SLEEVES, min_holdings=3),
+        ml_predictions=predictions,
+        ml_lambda=pd.Series(0.3, index=_DATES),
+    )
+    assert StrategyParams().allocator is None
+    pd.testing.assert_frame_equal(default, with_preds)
 
 
 def test_zscore_grouping_changes_weights() -> None:

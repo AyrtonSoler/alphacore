@@ -32,6 +32,7 @@ from typing import Literal
 import pandas as pd
 
 from common.factor_model import factor_exposures_at
+from ml.allocation import AllocatorParams, tilt_weights
 from signals.cross_section import c_zscore_sector_neutral
 from signals.neutralization import residualize_signal
 from signals.pipeline import DEFAULT_SLEEVES
@@ -43,6 +44,8 @@ ZScoreGrouping = Literal["sector", "market_wide"]
 
 # A single market-wide group label: standardize across the whole cross-section.
 _MARKET_WIDE_LABEL = "ALL"
+# A name counts as held above this weight (the optimizer leaves ~0 on non-selected names).
+_HELD_THRESHOLD = 1e-6
 
 
 def _quality_momentum_sleeves() -> dict[str, list[str]]:
@@ -71,6 +74,11 @@ class StrategyParams:
         Assets under management, for the liquidity cap and market impact.
     cadence_months:
         Rebalance every this many months (3 = quarterly).
+    allocator:
+        Optional ML allocation overlay. ``None`` (the default) keeps the equal-weight
+        sizing of the definitive strategy; when set, the held names are re-sized from the
+        frozen ML predictions passed to :func:`build_strategy_weights` (selection is never
+        changed). See :mod:`ml.allocation`.
 
     """
 
@@ -86,6 +94,7 @@ class StrategyParams:
     cash: float = 0.01
     aum: float = 100_000_000.0
     cadence_months: int = 3
+    allocator: AllocatorParams | None = None
 
 
 # Frozen, so a single shared default instance is safe to reuse as a parameter default.
@@ -163,6 +172,8 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
     benchmark_weights: pd.DataFrame,
     rebalance_dates: Sequence[pd.Timestamp],
     params: StrategyParams = _DEFAULT_PARAMS,
+    ml_predictions: pd.DataFrame | None = None,
+    ml_lambda: pd.Series[float] | None = None,
 ) -> pd.DataFrame:
     """Build the date x ticker weight panel of the definitive strategy.
 
@@ -180,12 +191,19 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
         Ordered rebalancing dates (use :func:`select_rebalance_dates` for the cadence).
     params:
         Strategy configuration (:class:`StrategyParams`); defaults encode the team decision.
+    ml_predictions:
+        Optional frozen Phase-A prediction panel (date x ticker forward returns). Only used
+        when ``params.allocator`` is set; the held names are re-sized from it.
+    ml_lambda:
+        Optional per-date tilt strength (:func:`ml.allocation.earned_lambda`), paired with
+        ``ml_predictions``.
 
     Returns
     -------
     pandas.DataFrame
         Date x ticker weights, long-only, within the cap, summing to ``1 - cash`` per
-        date.
+        date. Selection (which names are held) is always Q+M's; the ML overlay only
+        changes the money split among held names.
 
     """
     alpha = _alpha_panel(signal_frames, factor_matrices, sectors, rebalance_dates, params)
@@ -203,4 +221,41 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
         cash=params.cash,
         aum=params.aum,
     )
-    return construct_portfolios(signal_frames, rebalance_dates, data, config, alpha_override=alpha)
+    weights = construct_portfolios(
+        signal_frames, rebalance_dates, data, config, alpha_override=alpha
+    )
+    if params.allocator is None or ml_predictions is None or ml_lambda is None:
+        return weights
+    # Keep the overlay's cap/cash consistent with the strategy's.
+    allocator = dataclasses.replace(
+        params.allocator, cash=params.cash, cap_per_name=params.cap_per_name
+    )
+    return _apply_ml_allocation(weights, ml_predictions, ml_lambda, allocator)
+
+
+def _apply_ml_allocation(
+    weights: pd.DataFrame,
+    ml_predictions: pd.DataFrame,
+    ml_lambda: pd.Series[float],
+    allocator: AllocatorParams,
+) -> pd.DataFrame:
+    """Re-size each date's held names from the frozen ML predictions (selection unchanged).
+
+    For every rebalance date, the held names are re-weighted by :func:`ml.allocation.
+    tilt_weights` using that date's frozen predictions and earned tilt. Dates with no
+    earned tilt, missing predictions, or no holdings keep the equal-weight allocation.
+    """
+    out = weights.copy()
+    for date in out.index:
+        row = out.loc[date]
+        held = row[row > _HELD_THRESHOLD]
+        if held.empty or date not in ml_predictions.index or date not in ml_lambda.index:
+            continue
+        lam = float(ml_lambda.loc[date])
+        predicted = ml_predictions.loc[date].reindex(held.index)
+        if lam <= 0.0 or bool(predicted.isna().any()):
+            continue
+        tilted = tilt_weights(predicted, lam, allocator)
+        out.loc[date, :] = 0.0
+        out.loc[date, tilted.index] = tilted.to_numpy()
+    return out
