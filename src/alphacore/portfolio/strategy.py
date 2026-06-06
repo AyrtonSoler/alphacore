@@ -141,8 +141,14 @@ def _alpha_panel(  # noqa: PLR0913 - cohesive per-date alpha inputs
     for date in rebalance_dates:
         design = factor_exposures_at(factor_matrices, date)
         cross = pd.DataFrame({t: f.asof(date) for t, f in signal_frames.items()}).T
+        # Asset eligibility: ``asof`` carries a delisted name's last pre-delisting row
+        # forward forever, so a name whose price series ends before ``date`` would stay
+        # selectable with stale signals — and then have no execution price at the
+        # rebalance. Keep only names whose data actually reaches ``date`` (no look-ahead;
+        # this only ever drops names, never adds future information).
+        live = {t for t, f in signal_frames.items() if len(f.index) > 0 and f.index.max() >= date}
         common = cross.index.intersection(sectors.dropna().index).intersection(design.index)
-        cross = cross.loc[common].dropna(how="all")
+        cross = cross.loc[[t for t in common if t in live]].dropna(how="all")
         if cross.empty:
             continue
         if params.zscore_grouping == "market_wide":

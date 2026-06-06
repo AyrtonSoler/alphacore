@@ -81,6 +81,17 @@ def test_panel_is_dates_by_held_names() -> None:
     assert set(panel.columns) <= set(_TICKERS)
 
 
+def test_delisted_name_is_not_held_after_its_data_ends() -> None:
+    """Asset eligibility: a name whose price series ends before a rebalance date carries
+    zero weight there (no stale ``asof`` carry-forward into a date with no execution price)."""
+    frames, factor_matrices, sectors, benchmark = _build()
+    # T00 is delisted after the first date: its frame only reaches _DATES[0].
+    frames["T00"] = frames["T00"].loc[[_DATES[0]]]
+    params = StrategyParams(sleeves=_SLEEVES, min_holdings=3, cash=_CASH)
+    panel = build_strategy_weights(frames, factor_matrices, sectors, benchmark, _DATES, params)
+    assert float(panel.loc[_DATES[1]].get("T00", 0.0)) == 0.0
+
+
 def test_each_date_is_long_only_capped_and_budgeted() -> None:
     """Per date: weights in [0, cap] summing to 1 - cash."""
     frames, factor_matrices, sectors, benchmark = _build()
