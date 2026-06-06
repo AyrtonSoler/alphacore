@@ -180,11 +180,13 @@ def optimize_portfolio(
     """
     weights = _solve_convex(inputs, params, params.cap_per_name)
 
+    # The floor cannot exceed the universe size; a tighter cap would be infeasible.
+    target_holdings = min(params.min_holdings, len(inputs.alpha))
     holdings = int((weights > _HOLDING_THRESHOLD).sum())
-    if holdings < params.min_holdings:
-        # Tighten the box so at least min_holdings names are needed to fill the
+    if holdings < target_holdings:
+        # Tighten the box so at least target_holdings names are needed to fill the
         # budget; never loosen past the official cap.
-        spread_cap = min(params.cap_per_name, (1.0 - inputs.cash) / params.min_holdings)
+        spread_cap = min(params.cap_per_name, (1.0 - inputs.cash) / target_holdings)
         weights = _solve_convex(inputs, params, spread_cap)
 
     return weights
