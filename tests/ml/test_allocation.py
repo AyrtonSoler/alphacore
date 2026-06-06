@@ -128,6 +128,23 @@ def test_predict_forward_returns_is_causal() -> None:
     assert not preds.loc[dates[28]].equals(preds_perturbed.loc[dates[28]])
 
 
+def test_allocator_params_purge_default_is_one() -> None:
+    """The default purge is one period (the quarterly grid's minimal gap)."""
+    assert AllocatorParams().purge_periods == 1
+
+
+def test_predict_forward_returns_respects_purge_periods() -> None:
+    """A purge wider than the history leaves no training data, so nothing is predicted.
+
+    This guards the long-horizon target case: a forward-1-year economic-gain label must
+    not leak, so the purge is widened to cover the label horizon.
+    """
+    features, target, _ = _synth_panel()
+    params = dataclasses.replace(_PARAMS, min_train_periods=12, purge_periods=999)
+    preds = predict_forward_returns(features, target, params)
+    assert preds.isna().all().all()
+
+
 def test_predict_forward_returns_is_seeded() -> None:
     """Same inputs and seed => identical frozen prediction panel."""
     features, target, _ = _synth_panel()

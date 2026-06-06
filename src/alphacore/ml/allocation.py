@@ -39,9 +39,6 @@ _SPREAD_EPS = 1e-12
 # before the trust gate will award any tilt.
 _MIN_NAMES = 2
 _MIN_IC_HISTORY = 3
-# Purge one period between train and predict so a label that overlaps the prediction date
-# cannot leak into training.
-_PURGE = 1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -62,6 +59,10 @@ class AllocatorParams:
         Periods of history before the model starts predicting (walk-forward warm-up).
     refit_every:
         Refit cadence, in periods (cost control).
+    purge_periods:
+        Periods dropped between the train window and the prediction date so a label
+        cannot leak into training. Must be >= the target's realization horizon (e.g. 4
+        for a forward-1-year economic-gain label on a quarterly grid).
     cap_per_name:
         Per-name weight cap (the official 12.5%).
     cash:
@@ -78,6 +79,7 @@ class AllocatorParams:
     min_edge: float = 0.0
     min_train_periods: int = 24
     refit_every: int = 6
+    purge_periods: int = 1
     cap_per_name: float = 0.125
     cash: float = 0.01
     z_clip: float = 3.0
@@ -120,7 +122,7 @@ def predict_forward_returns(
         if k < params.min_train_periods:
             continue
         if scorer is None or (k - params.min_train_periods) % params.refit_every == 0:
-            x_train, y_train = _training_matrix(features, target, dates[: k - _PURGE])
+            x_train, y_train = _training_matrix(features, target, dates[: k - params.purge_periods])
             if len(x_train) >= _MIN_NAMES:
                 scorer = LinearScorer(random_state=params.random_state).fit(x_train, y_train)
         if scorer is None:

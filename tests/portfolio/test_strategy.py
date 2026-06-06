@@ -60,6 +60,8 @@ def test_default_params_encode_team_decision() -> None:
     assert params.cadence_months == 3
     assert params.min_holdings == 15
     assert params.cap_per_name == 0.125
+    assert params.allocator is not None
+    assert params.allocator.lambda_max == 0.30
 
 
 def test_select_rebalance_dates_quarterly() -> None:
@@ -133,11 +135,13 @@ def test_ml_allocator_retilts_held_weights_without_changing_selection() -> None:
         assert np.isclose(row.sum(), 1.0 - StrategyParams().cash, atol=1e-4)
 
 
-def test_ml_allocator_disabled_by_default() -> None:
-    """No allocator (the definitive strategy default) => equal-weight, predictions ignored."""
+def test_tilt_needs_predictions_and_spread() -> None:
+    """The overlay is on by default, but is a no-op without predictions and flat with no spread."""
     frames, factor_matrices, sectors, benchmark = _build()
-    predictions = pd.DataFrame(1.0, index=_DATES, columns=_TICKERS)
-    default = build_strategy_weights(
+    assert StrategyParams().allocator is not None  # on by default
+
+    # No predictions supplied => the overlay does nothing (identical to explicitly off).
+    no_preds = build_strategy_weights(
         frames,
         factor_matrices,
         sectors,
@@ -145,18 +149,32 @@ def test_ml_allocator_disabled_by_default() -> None:
         _DATES,
         StrategyParams(sleeves=_SLEEVES, min_holdings=3),
     )
-    with_preds = build_strategy_weights(
+    explicit_off = build_strategy_weights(
+        frames,
+        factor_matrices,
+        sectors,
+        benchmark,
+        _DATES,
+        StrategyParams(sleeves=_SLEEVES, min_holdings=3, allocator=None),
+    )
+    pd.testing.assert_frame_equal(no_preds, explicit_off)
+
+    # Flat predictions (zero cross-sectional spread) => the tilt collapses to equal weight.
+    flat_predictions = pd.DataFrame(1.0, index=_DATES, columns=_TICKERS)
+    flat_preds = build_strategy_weights(
         frames,
         factor_matrices,
         sectors,
         benchmark,
         _DATES,
         StrategyParams(sleeves=_SLEEVES, min_holdings=3),
-        ml_predictions=predictions,
+        ml_predictions=flat_predictions,
         ml_lambda=pd.Series(0.3, index=_DATES),
     )
-    assert StrategyParams().allocator is None
-    pd.testing.assert_frame_equal(default, with_preds)
+    for date in _DATES:
+        row = flat_preds.loc[date]
+        held = row[row > 1e-6]
+        assert np.allclose(held.to_numpy(), held.mean())  # all held weights equal
 
 
 def test_zscore_grouping_changes_weights() -> None:

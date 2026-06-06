@@ -75,10 +75,11 @@ class StrategyParams:
     cadence_months:
         Rebalance every this many months (3 = quarterly).
     allocator:
-        Optional ML allocation overlay. ``None`` (the default) keeps the equal-weight
-        sizing of the definitive strategy; when set, the held names are re-sized from the
-        frozen ML predictions passed to :func:`build_strategy_weights` (selection is never
-        changed). See :mod:`ml.allocation`.
+        ML allocation overlay (on by default: ``lambda_max=0.30``). It re-sizes the held
+        names from the frozen ML predictions passed to :func:`build_strategy_weights`
+        (selection is never changed) toward names with higher predicted economic gain. Set
+        to ``None`` to force equal weight; with the overlay on but no predictions supplied
+        the result is still equal weight. See :mod:`ml.allocation`.
 
     """
 
@@ -94,7 +95,7 @@ class StrategyParams:
     cash: float = 0.01
     aum: float = 100_000_000.0
     cadence_months: int = 3
-    allocator: AllocatorParams | None = None
+    allocator: AllocatorParams | None = dataclasses.field(default_factory=AllocatorParams)
 
 
 # Frozen, so a single shared default instance is safe to reuse as a parameter default.
