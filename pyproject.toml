@@ -30,6 +30,7 @@ packages = ["src/alphacore"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = ["slow: marks tests as slow (deselect with -m 'not slow')"]
 
 [tool.mypy]
 strict = true
