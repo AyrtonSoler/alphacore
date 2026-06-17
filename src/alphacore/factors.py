@@ -1,50 +1,12 @@
-"""KN factor-model loaders — wide factor CSVs to per-date design matrices.
-
-The official KN model ships one wide ``date x ticker`` CSV per factor (the five
-styles beta/size/value/residual-volatility/momentum, the market factor, the 11 GICS
-industries, and the idiosyncratic return ``f_idyo_returns``). Each cell is that
-factor's return *contribution* for a name on a day.
-
-Two consumers:
-
-- §5.4 neutralization needs, on a rebalancing date, the ``ticker x factor`` design
-  matrix (regress each signal on it and keep the residual). Because the regression
-  is scale-invariant per column, the contributions serve directly as regressors —
-  no need to recover the underlying exposures.
-- §5.9 attribution weights those same contributions by the portfolio.
-
-The wide CSVs are large (hundreds of MB each); these loaders read one factor file at
-a time so memory stays bounded to the factors actually needed.
-"""
-
+"""Pure factor-design helpers: assemble per-date design matrices from in-memory factor
+matrices. Split out of the original common.factor_model (the CSV loader stays in the data
+adapter of each consumer)."""
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from pathlib import Path
 from typing import cast
 
 import pandas as pd
-
-
-def load_factor_matrix(path: Path | str) -> pd.DataFrame:
-    """Load one wide factor CSV into a date-indexed, ticker-columned float frame.
-
-    Parameters
-    ----------
-    path:
-        Path to a ``f_*.csv`` factor file (leading unnamed date column, then one
-        column per ticker).
-
-    Returns
-    -------
-    pandas.DataFrame
-        Indexed by date (DatetimeIndex), one float column per ticker, holding that
-        factor's per name/day return contribution.
-
-    """
-    raw = pd.read_csv(path, index_col=0)
-    raw.index = pd.DatetimeIndex(pd.to_datetime(raw.index))
-    return raw.astype(float)
 
 
 def factor_exposures_at(
