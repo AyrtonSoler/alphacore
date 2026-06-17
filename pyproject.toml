@@ -15,6 +15,10 @@ dependencies = [
     "cvxpy",
     "scikit-learn",
     "interpret",
+    "QuantLib",
+    "structlog",
+    "pyarrow",
+    "openpyxl",
 ]
 
 [project.optional-dependencies]
@@ -32,8 +36,17 @@ strict = true
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["cvxpy.*", "interpret.*", "sklearn.*", "scipy.*", "matplotlib.*"]
+module = ["interpret.*", "sklearn.*", "scipy.*", "matplotlib.*", "QuantLib.*"]
 ignore_missing_imports = true
+
+# cvxpy ships a py.typed marker but with incomplete inline annotations, so mypy
+# resolves it and then emits false attr-defined / no-untyped-call errors for valid
+# runtime API (cp.quad_form, cp.psd_wrap, ...). Skip following it so it is treated
+# as untyped rather than partially-typed; strict stays on for our own code.
+[[tool.mypy.overrides]]
+module = ["cvxpy.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.ruff]
 line-length = 100
