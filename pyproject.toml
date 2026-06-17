@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "alphacore"
+version = "0.1.0"
+description = "Pure-compute quant strategy engine: signals, portfolio, ml, backtest."
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "cvxpy",
+    "scikit-learn",
+    "interpret",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy", "pandas-stubs"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alphacore"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[[tool.mypy.overrides]]
+module = ["cvxpy.*", "interpret.*", "sklearn.*", "scipy.*", "matplotlib.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "D", "PLR2004"]
