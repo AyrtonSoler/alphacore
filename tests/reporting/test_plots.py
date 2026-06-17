@@ -12,8 +12,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from portfolio.backtest import BacktestResult
-from reporting.plots import plot_backtest
+from alphacore.portfolio.backtest import BacktestResult
+from alphacore.reporting.plots import plot_backtest
 
 
 def test_plot_backtest_writes_a_png(tmp_path: Path) -> None:

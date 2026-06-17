@@ -1,6 +1,6 @@
 """RED tests for signals.pipeline — per-ticker signal computation (data wiring).
 
-Bridges the loaded curator frame (common.panel) to the pure signal functions
+Bridges the loaded curator frame (from the consumer's curator loader) to the pure signal functions
 (quality, momentum, risk). It builds the year-over-year "previous" fundamentals
 (annual values are carried daily, so a 252-session shift recovers the prior filing),
 applies the point-in-time guard via release_date, and emits one tidy per-ticker
@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from signals.pipeline import compute_ticker_signals
+from alphacore.signals.pipeline import compute_ticker_signals
 
 _N = 320  # enough for the 12-1 momentum and 252-day risk windows to fill
 

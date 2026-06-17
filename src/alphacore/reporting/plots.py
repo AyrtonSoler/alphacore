@@ -13,7 +13,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402  (must follow backend selection)
 
-from portfolio.backtest import BacktestResult  # noqa: E402
+from alphacore.portfolio.backtest import BacktestResult  # noqa: E402
 
 _HEIGHT_RATIOS = [3, 1]
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from signals.regime import RegimeParams, c_market_regime_signal, c_regime_cash_weight
+from alphacore.signals.regime import RegimeParams, c_market_regime_signal, c_regime_cash_weight
 
 _Z = 20
 _SMA = 5

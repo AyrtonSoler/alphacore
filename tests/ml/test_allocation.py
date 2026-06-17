@@ -19,13 +19,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml.allocation import (
+from alphacore.ml.allocation import (
     AllocatorParams,
     earned_lambda,
     predict_forward_returns,
     tilt_weights,
 )
-from ml.metrics import information_coefficient
+from alphacore.ml.metrics import information_coefficient
 
 _PARAMS = AllocatorParams()
 

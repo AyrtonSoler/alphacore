@@ -27,7 +27,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ml.trust_governor import blend_scores, bound_rank_influence, trust_weight
+from alphacore.ml.trust_governor import blend_scores, bound_rank_influence, trust_weight
 
 
 def test_lambda_is_one_when_ml_does_not_beat_baseline() -> None:

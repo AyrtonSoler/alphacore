@@ -24,7 +24,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from signals.neutralization import residualize_signal
+from alphacore.signals.neutralization import residualize_signal
 
 
 def _synthetic_factors(n: int = 200, k: int = 5, seed: int = 42) -> pd.DataFrame:

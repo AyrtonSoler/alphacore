@@ -25,8 +25,8 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from common.factor_model import factor_exposures_at
-from signals.pipeline import assemble_cross_section
+from alphacore.factors import factor_exposures_at
+from alphacore.signals.pipeline import assemble_cross_section
 
 from .optimizer import OptimizerInputs, OptimizerParams, optimize_portfolio
 
@@ -46,7 +46,8 @@ class BacktestData:
         Ticker -> GICS sector for the sector-neutral z-score.
     factor_matrices:
         Mapping from factor name to its date x ticker matrix
-        (:func:`common.factor_model.load_factor_matrix`).
+        (a date-indexed, ticker-columned matrix from the consumer's
+        factor-matrix loader).
     benchmark_weights:
         KN600 daily constituent weights (date x ticker), the optimizer's ``w_bench``.
     volatility:

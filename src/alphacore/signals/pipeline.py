@@ -1,7 +1,8 @@
 """Per-ticker signal computation — wiring loaded data to the signal functions.
 
-The bridge from one loaded curator frame (:func:`common.panel.load_ticker_frame`)
-to a tidy per-ticker frame of named signals, ready for the cross-sectional stages
+The bridge from one loaded curator frame (a date-indexed per-ticker frame from the
+consumer's curator loader) to a tidy per-ticker frame of named signals, ready for
+the cross-sectional stages
 (§5.3 z-score, §5.4 neutralization). It:
 
 - builds the year-over-year "previous" fundamentals a few signals need. Annual
@@ -80,7 +81,7 @@ def compute_ticker_signals(
     Parameters
     ----------
     frame:
-        A loaded curator frame from :func:`common.panel.load_ticker_frame`, indexed
+        A loaded curator frame (from the consumer's curator loader), indexed
         by date with the semantic field columns and ``release_date``.
     market_returns:
         Optional market return series aligned to ``frame.index``. When given, the
@@ -173,11 +174,11 @@ def assemble_cross_section(
         The rebalancing date. Each ticker contributes its last public row at or
         before this date (as-of), so the cross-section is point-in-time.
     sectors:
-        Ticker -> GICS sector (from :func:`common.factor_model.gics_sector_map`),
-        for the sector-neutral z-score.
+        Ticker -> GICS sector (a ticker-keyed sector map from the consumer's
+        factor-model adapter), for the sector-neutral z-score.
     factor_design:
-        Ticker x factor exposures on ``date``
-        (:func:`common.factor_model.factor_exposures_at`), the neutralization
+        Ticker x factor exposures on ``date`` (a ticker-indexed exposure matrix
+        from the consumer's factor-model adapter), the neutralization
         regressors.
     sleeves:
         Mapping from sleeve name (e.g. ``"quality"``) to the signal columns that

@@ -17,7 +17,7 @@ Acceptance
 
 from __future__ import annotations
 
-from robustness.cross_validation import purged_walk_forward_splits
+from alphacore.robustness.cross_validation import purged_walk_forward_splits
 
 
 def test_worked_example_default_horizon() -> None:

@@ -20,7 +20,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ml.governed import build_governed_alpha
+from alphacore.ml.governed import build_governed_alpha
 
 _DATES = pd.date_range("2018-01-31", periods=40, freq="ME")
 _NAMES = [f"N{i:02d}" for i in range(30)]

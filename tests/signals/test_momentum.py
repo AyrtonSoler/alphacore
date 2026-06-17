@@ -16,7 +16,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from signals.momentum import (
+from alphacore.signals.momentum import (
     c_roc_6m,
     c_roc_12m,
     c_rsi_14d,

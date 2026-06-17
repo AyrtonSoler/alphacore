@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from signals.value import c_ev_ebitda, c_fcf_yield, c_pb_ratio, c_pe_ratio
+from alphacore.signals.value import c_ev_ebitda, c_fcf_yield, c_pb_ratio, c_pe_ratio
 
 _FIXTURE = Path("tests/fixtures/value/damodaran_example.parquet")
 

@@ -26,8 +26,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml.metrics import information_coefficient
-from ml.scorers import EbmScorer, LinearScorer
+from alphacore.ml.metrics import information_coefficient
+from alphacore.ml.scorers import EbmScorer, LinearScorer
 
 _COLS = ["x0", "x1", "x2"]
 

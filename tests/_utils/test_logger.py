@@ -8,7 +8,7 @@ from __future__ import annotations
 import io
 import json
 
-from common.logger import configure_logging, get_logger
+from alphacore._utils.logger import configure_logging, get_logger
 
 
 def test_log_record_includes_service_timestamp_runbook() -> None:

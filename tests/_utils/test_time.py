@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from common.time import trading_days
+from alphacore._utils.time import trading_days
 
 
 def test_2023_has_about_252_trading_days() -> None:

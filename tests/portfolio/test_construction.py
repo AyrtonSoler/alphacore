@@ -21,9 +21,9 @@ import dataclasses
 import numpy as np
 import pandas as pd
 
-from common.factor_model import factor_exposures_at
-from portfolio.construction import BacktestConfig, BacktestData, construct_portfolios
-from portfolio.optimizer import OptimizerParams
+from alphacore.factors import factor_exposures_at
+from alphacore.portfolio.construction import BacktestConfig, BacktestData, construct_portfolios
+from alphacore.portfolio.optimizer import OptimizerParams
 
 _TICKERS = [f"T{i:02d}" for i in range(12)]
 _DATES = pd.to_datetime(["2020-01-31", "2020-02-28"])

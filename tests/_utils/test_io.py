@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from common.io import cache_key, read_parquet, write_parquet
+from alphacore._utils.io import cache_key, read_parquet, write_parquet
 
 
 def test_cache_key_is_stable_across_param_ordering() -> None:

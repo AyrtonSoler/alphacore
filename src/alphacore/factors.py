@@ -1,5 +1,5 @@
 """Pure factor-design helpers: assemble per-date design matrices from in-memory factor
-matrices. Split out of the original common.factor_model (the CSV loader stays in the data
+matrices. Split out of the original factor-model module (the CSV loader stays in the data
 adapter of each consumer)."""
 from __future__ import annotations
 

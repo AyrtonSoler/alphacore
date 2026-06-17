@@ -27,7 +27,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from signals.quality import (
+from alphacore.signals.quality import (
     c_accruals,
     c_asset_growth,
     c_gross_profitability,

@@ -17,7 +17,7 @@ import pathlib
 import pandas as pd
 import pytest
 
-from portfolio.deliverable import (
+from alphacore.portfolio.deliverable import (
     expand_to_universe,
     prepend_cash_row,
     to_deliverable_format,

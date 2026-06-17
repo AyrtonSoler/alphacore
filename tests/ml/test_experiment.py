@@ -21,10 +21,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml.experiment import mean_oos_ic, walk_forward_ic
-from ml.scorers import EbmScorer, LinearScorer
-from ml.trust_governor import trust_weight
-from robustness.cross_validation import purged_walk_forward_splits
+from alphacore.ml.experiment import mean_oos_ic, walk_forward_ic
+from alphacore.ml.scorers import EbmScorer, LinearScorer
+from alphacore.ml.trust_governor import trust_weight
+from alphacore.robustness.cross_validation import purged_walk_forward_splits
 
 _COLS = ["x0", "x1", "x2"]
 

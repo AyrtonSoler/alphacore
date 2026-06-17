@@ -21,7 +21,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from signals.pipeline import DEFAULT_SLEEVES, assemble_cross_section
+from alphacore.signals.pipeline import DEFAULT_SLEEVES, assemble_cross_section
 
 _QUALITY = ["quality_gross_profitability", "quality_accruals", "quality_piotroski"]
 _MOMENTUM = ["momentum_roc12", "momentum_roc6"]

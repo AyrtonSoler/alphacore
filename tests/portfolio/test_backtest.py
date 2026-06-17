@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from portfolio.backtest import run_backtest
+from alphacore.portfolio.backtest import run_backtest
 
 _DATES = pd.to_datetime(["2020-01-31", "2020-02-29", "2020-03-31"])
 _NAMES = ["AAA", "BBB"]

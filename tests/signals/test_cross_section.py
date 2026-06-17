@@ -23,7 +23,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from signals.cross_section import c_winsorize, c_zscore_sector_neutral
+from alphacore.signals.cross_section import c_winsorize, c_zscore_sector_neutral
 
 
 def test_winsorize_clips_within_sector_order_statistics() -> None:

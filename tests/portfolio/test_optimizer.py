@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from portfolio.optimizer import OptimizerInputs, OptimizerParams, optimize_portfolio
+from alphacore.portfolio.optimizer import OptimizerInputs, OptimizerParams, optimize_portfolio
 
 _N = 20
 _NAMES = [f"S{i:02d}" for i in range(_N)]

@@ -31,11 +31,11 @@ from typing import Literal
 
 import pandas as pd
 
-from common.factor_model import factor_exposures_at
-from ml.allocation import AllocatorParams, tilt_weights
-from signals.cross_section import c_zscore_sector_neutral
-from signals.neutralization import residualize_signal
-from signals.pipeline import DEFAULT_SLEEVES
+from alphacore.factors import factor_exposures_at
+from alphacore.ml.allocation import AllocatorParams, tilt_weights
+from alphacore.signals.cross_section import c_zscore_sector_neutral
+from alphacore.signals.neutralization import residualize_signal
+from alphacore.signals.pipeline import DEFAULT_SLEEVES
 
 from .construction import BacktestConfig, BacktestData, construct_portfolios
 from .optimizer import OptimizerParams
@@ -195,7 +195,8 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
     signal_frames:
         Ticker -> per-ticker signal frame (:func:`signals.pipeline.compute_ticker_signals`).
     factor_matrices:
-        Factor name -> date x ticker matrix (:func:`common.factor_model.load_factor_matrix`).
+        Factor name -> date x ticker matrix (a date-indexed, ticker-columned
+        matrix from the consumer's factor-matrix loader).
     sectors:
         Ticker -> GICS sector (used for the optional sector grouping and the optimizer).
     benchmark_weights:

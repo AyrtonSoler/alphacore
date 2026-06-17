@@ -21,7 +21,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from signals.risk import c_drawdown, c_idiosyncratic_vol, c_realized_vol
+from alphacore.signals.risk import c_drawdown, c_idiosyncratic_vol, c_realized_vol
 
 _ANNUALIZE = np.sqrt(252.0)
 

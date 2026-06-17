@@ -20,8 +20,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ml.allocation import AllocatorParams
-from portfolio.strategy import StrategyParams, build_strategy_weights, select_rebalance_dates
+from alphacore.ml.allocation import AllocatorParams
+from alphacore.portfolio.strategy import StrategyParams, build_strategy_weights, select_rebalance_dates
 
 _TICKERS = [f"T{i:02d}" for i in range(12)]
 _DATES = pd.to_datetime(["2020-01-31", "2020-02-29"])
