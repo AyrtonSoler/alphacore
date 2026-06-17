@@ -2,13 +2,13 @@
 
 Ties the whole strategy together. For each rebalancing date it:
 
-1. scores the universe with :func:`signals.pipeline.assemble_cross_section` (the
+1. scores the universe with :func:`alphacore.signals.pipeline.assemble_cross_section` (the
    factor-neutral residual-alpha score, §5.3+§5.4);
-2. assembles the per-date :class:`portfolio.optimizer.OptimizerInputs` — alpha from
+2. assembles the per-date :class:`alphacore.portfolio.optimizer.OptimizerInputs` — alpha from
    the score, a diagonal risk model from per-name volatility, the factor design
    (§5.4 regressors), the benchmark weights as-of the date, and the previous
    period's weights (so the turnover penalty has a reference); and
-3. solves with :func:`portfolio.optimizer.optimize_portfolio` (§5.8).
+3. solves with :func:`alphacore.portfolio.optimizer.optimize_portfolio` (§5.8).
 
 The output is the ``date x ticker`` weight panel the KaxaNuk backtest engine
 consumes. The risk model defaults to a diagonal of per-name variance (a Ledoit-Wolf
@@ -76,7 +76,7 @@ class BacktestConfig:
     Attributes
     ----------
     params:
-        Optimizer configuration (:class:`portfolio.optimizer.OptimizerParams`).
+        Optimizer configuration (:class:`alphacore.portfolio.optimizer.OptimizerParams`).
     sleeves:
         Alpha sleeves; defaults to the canonical quality/value/momentum.
     cash:
@@ -104,7 +104,7 @@ def construct_portfolios(
     Parameters
     ----------
     signal_frames:
-        Ticker -> per-ticker signal frame (:func:`signals.pipeline.compute_ticker_signals`).
+        Ticker -> per-ticker signal frame (:func:`alphacore.signals.pipeline.compute_ticker_signals`).
     rebalance_dates:
         Ordered rebalancing dates.
     data:

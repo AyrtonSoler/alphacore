@@ -16,8 +16,8 @@ These deliberately avoid ``ROE`` / margins / leverage (used in earlier drafts),
 which share ``net_income`` / ``equity`` with the value multiples; the signals here
 share much less DNA with value, keeping Quality the orthogonal axis.
 
-All signals reuse the shared :func:`signals._common.safe_divide` (NaN, never inf,
-on a non-positive denominator) and :func:`signals._common.apply_pit` (mask any
+All signals reuse the shared :func:`alphacore.signals._common.safe_divide` (NaN, never inf,
+on a non-positive denominator) and :func:`alphacore.signals._common.apply_pit` (mask any
 figure not yet public at the index date).
 
 References

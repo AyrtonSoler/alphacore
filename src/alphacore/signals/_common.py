@@ -1,6 +1,6 @@
 """Shared signal primitives — safe division and the point-in-time guard.
 
-Every fundamental-driven signal in :mod:`signals` obeys the same two conventions,
+Every fundamental-driven signal in :mod:`alphacore.signals` obeys the same two conventions,
 so they live here once and are imported by the individual signal modules rather
 than re-defined per file:
 

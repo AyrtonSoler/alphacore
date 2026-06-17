@@ -65,7 +65,7 @@ class StrategyParams:
         ``"market_wide"`` (the decision) standardizes each signal across the whole
         cross-section; ``"sector"`` standardizes within each GICS sector.
     gamma_risk, eps_factor, eps_sector, cap_per_name, min_holdings:
-        Optimizer settings (:class:`portfolio.optimizer.OptimizerParams`). The defaults
+        Optimizer settings (:class:`alphacore.portfolio.optimizer.OptimizerParams`). The defaults
         switch the risk term and the factor/sector bands off and keep the official
         12.5% cap and 15-name floor.
     cash:
@@ -79,7 +79,7 @@ class StrategyParams:
         names from the frozen ML predictions passed to :func:`build_strategy_weights`
         (selection is never changed) toward names with higher predicted economic gain. Set
         to ``None`` to force equal weight; with the overlay on but no predictions supplied
-        the result is still equal weight. See :mod:`ml.allocation`.
+        the result is still equal weight. See :mod:`alphacore.ml.allocation`.
 
     """
 
@@ -193,7 +193,7 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
     Parameters
     ----------
     signal_frames:
-        Ticker -> per-ticker signal frame (:func:`signals.pipeline.compute_ticker_signals`).
+        Ticker -> per-ticker signal frame (:func:`alphacore.signals.pipeline.compute_ticker_signals`).
     factor_matrices:
         Factor name -> date x ticker matrix (a date-indexed, ticker-columned
         matrix from the consumer's factor-matrix loader).
@@ -209,7 +209,7 @@ def build_strategy_weights(  # noqa: PLR0913 - cohesive strategy inputs
         Optional frozen Phase-A prediction panel (date x ticker forward returns). Only used
         when ``params.allocator`` is set; the held names are re-sized from it.
     ml_lambda:
-        Optional per-date tilt strength (:func:`ml.allocation.earned_lambda`), paired with
+        Optional per-date tilt strength (:func:`alphacore.ml.allocation.earned_lambda`), paired with
         ``ml_predictions``.
 
     Returns
@@ -255,7 +255,7 @@ def _apply_ml_allocation(
 ) -> pd.DataFrame:
     """Re-size each date's held names from the frozen ML predictions (selection unchanged).
 
-    For every rebalance date, the held names are re-weighted by :func:`ml.allocation.
+    For every rebalance date, the held names are re-weighted by :func:`alphacore.ml.allocation.
     tilt_weights` using that date's frozen predictions and earned tilt. Dates with no
     earned tilt, missing predictions, or no holdings keep the equal-weight allocation.
     """

@@ -8,7 +8,7 @@ register them by their ``c_`` prefix.
 
 Notes
 -----
-The series are indexed by *trading days* (see :mod:`common.time`), so window
+The series are indexed by *trading days* (see :mod:`alphacore._utils.time`), so window
 lengths are expressed in sessions, not calendar days: a "month" is ~21 sessions
 and a "year" ~252. These conventional values live in the module constants below
 rather than as inline literals.

@@ -56,7 +56,7 @@ def walk_forward_ic(
         Residual forward return (or its rank) per sample.
     splits:
         Train/test index pairs from
-        :func:`robustness.cross_validation.purged_walk_forward_splits`.
+        :func:`alphacore.robustness.cross_validation.purged_walk_forward_splits`.
 
     Returns
     -------

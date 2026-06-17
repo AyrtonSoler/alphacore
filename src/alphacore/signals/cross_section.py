@@ -1,7 +1,7 @@
 """Cross-sectional signal transforms — robust sector-neutral z-score (v3 §5.3).
 
-Stage 3 of the v3 pipeline. Where :mod:`signals.value`, :mod:`signals.quality`
-and :mod:`signals.momentum` produce *per-name time series*, these functions act
+Stage 3 of the v3 pipeline. Where :mod:`alphacore.signals.value`, :mod:`alphacore.signals.quality`
+and :mod:`alphacore.signals.momentum` produce *per-name time series*, these functions act
 **across names on a single rebalancing cross-section**, grouped by GICS sector.
 They turn each raw signal into a robust, sector-neutral z-score so that:
 
