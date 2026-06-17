@@ -19,8 +19,8 @@ def factor_exposures_at(
     Parameters
     ----------
     matrices:
-        Mapping from factor name to its loaded matrix (from
-        :func:`load_factor_matrix`), each indexed by date with ticker columns.
+        Mapping from factor name to its matrix: a DataFrame indexed by date with
+        ticker columns (as produced by the consumer's factor-matrix loader).
     date:
         The rebalancing date whose cross-section to extract.
     tickers:
@@ -48,9 +48,10 @@ def gics_sector_map(industry_matrices: Mapping[str, pd.DataFrame]) -> pd.Series[
     Parameters
     ----------
     industry_matrices:
-        Mapping from GICS sector name to its loaded industry matrix (from
-        :func:`load_factor_matrix`). A name has non-zero contributions in exactly
-        one industry — its own — across the sample.
+        Mapping from GICS sector name to its industry matrix: a DataFrame indexed by
+        date with ticker columns (as produced by the consumer's factor-matrix loader).
+        A name has non-zero contributions in exactly one industry — its own — across
+        the sample.
 
     Returns
     -------
