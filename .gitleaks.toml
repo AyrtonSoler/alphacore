@@ -1,0 +1,29 @@
+# gitleaks config — extends the default ruleset (docs/standards.md § 15.2).
+# The default rules already catch generic API keys, tokens, and private keys. We add an
+# allowlist so committed placeholder templates and the KaxaNuk license-key *format hint*
+# do not trip the scanner.
+
+[extend]
+useDefault = true
+
+# The default ruleset has no pattern for KaxaNuk license keys (LIC- + 32 hex chars), so a
+# leaked key would slip through. This rule closes that gap (docs/standards.md § 15.2). The
+# placeholder hint `LIC-XXXX...` in templates uses non-hex X's and is excluded below.
+[[rules]]
+id = "kaxanuk-license-key"
+description = "KaxaNuk Backtest Engine license key"
+regex = '''LIC-[A-Fa-f0-9]{32}'''
+keywords = ["LIC-"]
+
+[allowlist]
+description = "Tabots allowlisted paths and placeholder patterns"
+paths = [
+  '''Investment_Strategy/Config/\.env_template''',
+  '''secrets/README\.md''',
+]
+regexes = [
+  # Placeholder license-key format hints, never a real key (real keys live in gitignored
+  # secrets/kaxanuk_license_key and Config/.env).
+  '''LIC-XXXX+''',
+  '''LIC-XXXXXXXX\.\.\.''',
+]
