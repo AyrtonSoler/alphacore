@@ -98,6 +98,7 @@ def construct_portfolios(
     data: BacktestData,
     config: BacktestConfig | None = None,
     alpha_override: pd.DataFrame | None = None,
+    initial_previous_weights: "pd.Series[float] | None" = None,
 ) -> pd.DataFrame:
     """Run the rebalance loop and return the date x ticker weight panel.
 
@@ -115,6 +116,13 @@ def construct_portfolios(
         Optional pre-computed expected-alpha panel (date x ticker), e.g. the
         ML-governed score. When given, it replaces the rules score from
         ``assemble_cross_section`` as the optimizer's alpha.
+    initial_previous_weights:
+        Optional ticker -> weight Series used as the turnover anchor for the first
+        rebalance date.  Weights are fractions of total equity (e.g. 0.20 means 20%
+        of the portfolio is currently in that name).  Names outside the first date's
+        investable universe are silently dropped; names missing from the Series are
+        treated as 0.  When omitted (``None``), the first date anchors on the
+        benchmark — the unchanged default behaviour.
 
     Returns
     -------
@@ -125,7 +133,7 @@ def construct_portfolios(
     """
     config = config or BacktestConfig()
     weights_by_date: dict[pd.Timestamp, pd.Series[float]] = {}
-    previous: pd.Series[float] | None = None
+    previous: pd.Series[float] | None = initial_previous_weights
 
     for date in rebalance_dates:
         full_design = factor_exposures_at(data.factor_matrices, date)

@@ -126,3 +126,31 @@ def test_portfolio_is_factor_neutral_each_date() -> None:
         active = (weights - bench).to_numpy()
         exposure = design.to_numpy().T @ active
         assert (np.abs(exposure) <= 0.05 + 1e-3).all()
+
+
+def test_initial_previous_weights_default_matches_baseline() -> None:
+    """Passing initial_previous_weights=None is byte-identical to omitting the param."""
+    frames, data = _build()
+    cfg = BacktestConfig(sleeves=_SLEEVES, cash=_CASH)
+    base = construct_portfolios(frames, _DATES, data, cfg)
+    same = construct_portfolios(frames, _DATES, data, cfg, initial_previous_weights=None)
+    pd.testing.assert_frame_equal(base, same)
+
+
+def test_initial_previous_weights_anchors_first_date() -> None:
+    """Seeding the prior toward a low-weight name pulls the first date's solution toward it.
+
+    With tau_turnover=0.05 and cap_per_name=0.125, T04 scores poorly and lands at
+    effectively zero weight when the benchmark anchors the prior.  A 20% seed in T04
+    raises the turnover cost of *not* holding it, so the anchored solution allocates
+    strictly more to T04 than the benchmark-seeded default.
+    """
+    frames, data = _build()
+    params = OptimizerParams(tau_turnover=0.05, min_holdings=3, cap_per_name=0.125)
+    cfg = BacktestConfig(sleeves=_SLEEVES, cash=_CASH, params=params)
+    first = _DATES[0]
+    held_name = "T04"  # scores poorly — effectively zero in the unanchored solution
+    anchor = pd.Series({held_name: 0.20})
+    base = construct_portfolios(frames, [first], data, cfg)
+    anchored = construct_portfolios(frames, [first], data, cfg, initial_previous_weights=anchor)
+    assert anchored.loc[first, held_name] > base.loc[first, held_name]
