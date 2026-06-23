@@ -9,3 +9,8 @@ dist/
 build/
 *.egg-info/
 .venv/
+
+# editor / OS
+.idea/
+.vscode/
+.DS_Store
