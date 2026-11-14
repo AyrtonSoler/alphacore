@@ -12,10 +12,10 @@ Data loading is **out of scope**. The package never touches the network, a datab
 or the filesystem for market data: callers build a `BacktestData` from their own
 source and hand it in. This keeps the engine deterministic and trivially testable.
 
-It is a **private package**. Install over SSH at a tagged version:
+Install a tagged version straight from GitHub:
 
 ```bash
-pip install git+ssh://git@github.com/AyrtonSoler/alphacore@v0.1.0
+pip install git+https://github.com/AyrtonSoler/alphacore@v0.2.0
 ```
 
 ## Install (dev)
